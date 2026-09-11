@@ -2,16 +2,15 @@ const drawForm = document.querySelector("#drawForm");
 const nameInput = document.querySelector("#nameInput");
 const statusElement = document.querySelector("#status");
 const myResultElement = document.querySelector("#myResult");
-const drawnListElement = document.querySelector("#drawnList");
+const mensDrawnListElement = document.querySelector("#mensDrawnList");
+const mixedDrawnListElement = document.querySelector("#mixedDrawnList");
 const db = firebase.initializeApp(firebaseConfig).firestore();
 
+const groups = ["Group A", "Group B"];
 const slots = [1, 2, 3, 4];
-const fakeGroups = ["Group A", "Group B"];
 
 function sleep(milliseconds) {
-  return new Promise((resolve) => {
-    window.setTimeout(resolve, milliseconds);
-  });
+  return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
 }
 
 function setLoading(isLoading) {
@@ -23,245 +22,209 @@ function normalizeName(name) {
   return name.trim().toLowerCase().replace(/\s+/g, "-");
 }
 
-function pickAvailableSlot(usedSlots) {
-  const availableSlots = slots.filter((slot) => !usedSlots.includes(slot));
-
-  if (availableSlots.length === 0) {
-    throw new Error("No available slots");
-  }
-
-  return availableSlots[Math.floor(Math.random() * availableSlots.length)];
+function randomItem(items) {
+  return items[Math.floor(Math.random() * items.length)];
 }
 
 function startRandomAnimation() {
   myResultElement.innerHTML = `
-    <article class="random-card">
+    <article class="result-card random-card">
       <p class="result-label">Randomizing...</p>
-      <div class="random-display">
-        <span id="fakeGroup">Group A</span>
-        <span id="fakeSlot">Position 1</span>
-      </div>
+      <h2 id="randomGroup">Group A</h2>
+      <p id="randomPosition" class="random-position">Position 1</p>
     </article>
   `;
 
-  const fakeGroup = document.querySelector("#fakeGroup");
-  const fakeSlot = document.querySelector("#fakeSlot");
-
-  const timer = window.setInterval(() => {
-    fakeGroup.textContent = fakeGroups[Math.floor(Math.random() * fakeGroups.length)];
-    fakeSlot.textContent = `Position ${slots[Math.floor(Math.random() * slots.length)]}`;
+  const groupElement = document.querySelector("#randomGroup");
+  const positionElement = document.querySelector("#randomPosition");
+  const intervalId = window.setInterval(() => {
+    groupElement.textContent = randomItem(groups);
+    positionElement.textContent = `Position ${randomItem(slots)}`;
   }, 90);
 
-  return () => {
-    window.clearInterval(timer);
-  };
+  return () => window.clearInterval(intervalId);
 }
 
 function renderMyResult(player) {
-  myResultElement.innerHTML = "";
-
-  const card = document.createElement("article");
-  card.className = "result-card";
-
-  const title = document.createElement("p");
-  title.className = "result-label";
-  title.textContent = "Your Result";
-
-  const result = document.createElement("h2");
-  result.textContent = `${player.group} - Position ${player.slot}`;
-
-  const name = document.createElement("p");
-  name.className = "result-name";
-  name.textContent = player.registeredName;
-
-  card.append(title, result, name);
-  myResultElement.append(card);
+  myResultElement.innerHTML = `
+    <article class="result-card">
+      <p class="result-label">Your Men's Singles Result</p>
+      <h2>${player.group} - Position ${player.slot}</h2>
+      <p class="result-name"></p>
+    </article>
+  `;
+  myResultElement.querySelector(".result-name").textContent = player.registeredName;
 }
 
-function renderNameError() {
+function renderError(message) {
   myResultElement.innerHTML = "";
-
   const error = document.createElement("p");
   error.className = "error";
-  error.textContent = "This name is not on the registered player list. Please check the spelling and try again.";
-
+  error.textContent = message;
   myResultElement.append(error);
 }
 
-function renderDrawnPlayers(players) {
-  drawnListElement.innerHTML = "";
+function renderPlayerList(container, players, emptyMessage) {
+  container.innerHTML = "";
 
   if (players.length === 0) {
     const empty = document.createElement("p");
     empty.className = "empty";
-    empty.textContent = "暂无";
-    drawnListElement.append(empty);
+    empty.textContent = emptyMessage;
+    container.append(empty);
     return;
   }
 
   for (const player of players) {
     const item = document.createElement("div");
     item.className = "drawn-player";
-
     const name = document.createElement("span");
-    name.className = "drawn-name";
     name.textContent = player.registeredName;
-
-    const result = document.createElement("span");
-    result.className = "drawn-result";
-    result.textContent = `${player.group} - Position ${player.slot}`;
-
+    const result = document.createElement("strong");
+    result.textContent = `${player.group} · Position ${player.slot}`;
     item.append(name, result);
-    drawnListElement.append(item);
+    container.append(item);
   }
 }
 
-async function loadDrawnPlayers() {
-  const snapshot = await db.collection("drawnPlayers").get();
-
-  const players = snapshot.docs
-    .map((doc) => doc.data())
-    .sort((first, second) => {
-      const firstTime = first.drawnAt?.toMillis?.() || 0;
-      const secondTime = second.drawnAt?.toMillis?.() || 0;
-      return firstTime - secondTime;
-    });
-
-  renderDrawnPlayers(players);
+function sortByDrawTime(players) {
+  return players.sort((first, second) => {
+    const firstTime = first.drawnAt?.toMillis?.() || 0;
+    const secondTime = second.drawnAt?.toMillis?.() || 0;
+    return firstTime - secondTime;
+  });
 }
 
-async function getPlayer(registeredName) {
-  const playerId = normalizeName(registeredName);
-  const playerDoc = await db.collection("players").doc(playerId).get();
+async function loadResults() {
+  const [mensSnapshot, mixedSnapshot] = await Promise.all([
+    db.collection("mensDrawnPlayers").get(),
+    db.collection("drawnPlayers").get()
+  ]);
 
-  if (!playerDoc.exists) {
-    return null;
-  }
-
-  return {
-    id: playerId,
-    ...playerDoc.data()
-  };
+  renderPlayerList(mensDrawnListElement, sortByDrawTime(mensSnapshot.docs.map((doc) => doc.data())), "No men's singles players have drawn yet.");
+  renderPlayerList(mixedDrawnListElement, sortByDrawTime(mixedSnapshot.docs.map((doc) => doc.data())), "No mixed doubles results yet.");
 }
 
-async function drawPlayer(registeredName) {
-  const playerId = normalizeName(registeredName);
-  const playerRef = db.collection("players").doc(playerId);
+async function getMensPlayer(playerId) {
+  const document = await db.collection("mensPlayers").doc(playerId).get();
+  return document.exists ? document.data() : null;
+}
+
+async function drawMensPlayer(playerId) {
+  const playerRef = db.collection("mensPlayers").doc(playerId);
+  const groupRefs = groups.map((group) => db.collection("mensGroups").doc(group));
 
   return db.runTransaction(async (transaction) => {
     const playerDoc = await transaction.get(playerRef);
-
-    if (!playerDoc.exists) {
-      return { status: "not-found" };
-    }
+    if (!playerDoc.exists) return { status: "not-found" };
 
     const player = playerDoc.data();
+    if (player.drawn) return { status: "already-drawn", player };
 
-    if (player.drawn) {
-      return {
-        status: "already-drawn",
-        player
-      };
+    const groupDocs = [];
+    for (const groupRef of groupRefs) {
+      groupDocs.push(await transaction.get(groupRef));
+    }
+    if (groupDocs.some((document) => !document.exists)) {
+      throw new Error("mens-groups-not-ready");
     }
 
-    const groupRef = db.collection("groups").doc(player.group);
-    const groupDoc = await transaction.get(groupRef);
-    const group = groupDoc.exists ? groupDoc.data() : { usedSlots: [] };
-    const slot = pickAvailableSlot(group.usedSlots || []);
+    const availableSpots = [];
+    groupDocs.forEach((document, groupIndex) => {
+      const usedSlots = document.data().usedSlots || [];
+      slots.filter((slot) => !usedSlots.includes(slot)).forEach((slot) => {
+        availableSpots.push({ group: groups[groupIndex], groupRef: groupRefs[groupIndex], slot });
+      });
+    });
+
+    if (availableSpots.length === 0) throw new Error("no-available-spots");
+
+    // Group and Position are both selected from all remaining spots at random.
+    const selected = randomItem(availableSpots);
     const drawnAt = firebase.firestore.FieldValue.serverTimestamp();
 
     transaction.update(playerRef, {
       drawn: true,
-      slot,
+      group: selected.group,
+      slot: selected.slot,
       drawnAt
     });
-
-    transaction.set(
-      groupRef,
-      {
-        usedSlots: firebase.firestore.FieldValue.arrayUnion(slot)
-      },
-      { merge: true }
-    );
-
-    transaction.set(db.collection("drawnPlayers").doc(playerId), {
+    transaction.update(selected.groupRef, {
+      usedSlots: firebase.firestore.FieldValue.arrayUnion(selected.slot)
+    });
+    transaction.set(db.collection("mensDrawnPlayers").doc(playerId), {
       registeredName: player.registeredName,
-      group: player.group,
-      slot,
+      group: selected.group,
+      slot: selected.slot,
       drawnAt
     });
 
     return {
       status: "drawn",
-      player: {
-        ...player,
-        drawn: true,
-        slot
-      }
+      player: { ...player, drawn: true, group: selected.group, slot: selected.slot }
     };
   });
 }
 
 async function startDraw(event) {
   event.preventDefault();
-
   const registeredName = nameInput.value.trim();
-
-  if (!registeredName) {
-    return;
-  }
+  if (!registeredName) return;
 
   setLoading(true);
   statusElement.textContent = "";
   myResultElement.innerHTML = "";
 
   try {
-    const existingPlayer = await getPlayer(registeredName);
+    const playerId = normalizeName(registeredName);
+    const existingPlayer = await getMensPlayer(playerId);
 
     if (!existingPlayer) {
-      renderNameError();
+      renderError("This name is not on the men's singles player list. Please check the spelling.");
       return;
     }
-
     if (existingPlayer.drawn) {
       statusElement.textContent = "You have already drawn. Showing your result.";
       renderMyResult(existingPlayer);
       return;
     }
 
+    statusElement.textContent = "Randomizing...";
     const stopAnimation = startRandomAnimation();
-
-    const [result] = await Promise.all([
-      drawPlayer(registeredName),
-      sleep(2000)
-    ]);
-
-    stopAnimation();
+    let result;
+    try {
+      [result] = await Promise.all([drawMensPlayer(playerId), sleep(2000)]);
+    } finally {
+      stopAnimation();
+    }
 
     if (result.status === "not-found") {
-      renderNameError();
+      statusElement.textContent = "";
+      renderError("This name is not on the men's singles player list.");
       return;
     }
 
-    statusElement.textContent =
-      result.status === "already-drawn"
-        ? "You have already drawn. Showing your result."
-        : "Draw complete";
-
+    statusElement.textContent = result.status === "already-drawn"
+      ? "You have already drawn. Showing your result."
+      : "Draw complete";
     renderMyResult(result.player);
-    await loadDrawnPlayers();
+    await loadResults();
   } catch (error) {
-    myResultElement.innerHTML = "";
-
-    const message = document.createElement("p");
-    message.className = "error";
-    message.textContent = "Something went wrong. Please refresh and try again.";
-
-    myResultElement.append(message);
+    statusElement.textContent = "";
+    if (error.message === "no-available-spots") {
+      renderError("All men's singles positions have already been drawn.");
+    } else if (error.message === "mens-groups-not-ready") {
+      renderError("The men's singles draw has not been set up yet.");
+    } else {
+      renderError("Something went wrong. Please refresh and try again.");
+    }
   } finally {
     setLoading(false);
   }
 }
 
 drawForm.addEventListener("submit", startDraw);
-loadDrawnPlayers();
+loadResults().catch(() => {
+  renderPlayerList(mensDrawnListElement, [], "Unable to load results.");
+  renderPlayerList(mixedDrawnListElement, [], "Unable to load results.");
+});
