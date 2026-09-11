@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Setup Men's Singles Draw</title>
+    <style>
+      * { box-sizing: border-box; }
+      body { max-width: 720px; margin: 0 auto; padding: 24px 16px 48px; color: #172114; font-family: system-ui, sans-serif; }
+      label { display: block; margin: 18px 0 8px; font-weight: 700; }
+      textarea { width: 100%; min-height: 280px; border: 1px solid #dbe4d6; border-radius: 8px; padding: 12px; font: inherit; }
+      button { width: 100%; margin-top: 14px; border: 0; border-radius: 8px; padding: 13px 18px; background: #21764b; color: white; cursor: pointer; font: inherit; font-weight: 800; }
+      pre { overflow: auto; border-radius: 8px; padding: 12px; background: #f5f7f1; white-space: pre-wrap; }
+    </style>
+  </head>
+  <body>
+    <h1>Setup Men's Singles Draw</h1>
+    <p>Paste one registered player name per line. Group and Position will both be random.</p>
+    <label for="playersInput">Men's Singles Players</label>
+    <textarea id="playersInput" placeholder="Andy&#10;Royce&#10;Oliver"></textarea>
+    <button id="setupButton" type="button">Create / Reset Men's Singles Draw</button>
+    <pre id="log"></pre>
+
+    <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script>
+      const db = firebase.initializeApp(firebaseConfig).firestore();
+      const log = document.querySelector("#log");
+      function normalizeName(name) { return name.trim().toLowerCase().replace(/\s+/g, "-"); }
+      function parsePlayers(text) { return text.split(/\r?\n/).map((name) => name.trim()).filter(Boolean); }
+      async function deleteCollection(collectionName) {
+        const snapshot = await db.collection(collectionName).get();
+        const batch = db.batch();
+        snapshot.docs.forEach((document) => batch.delete(document.ref));
+        await batch.commit();
+      }
+
+      document.querySelector("#setupButton").addEventListener("click", async () => {
+        try {
+          const players = parsePlayers(document.querySelector("#playersInput").value);
+          const ids = players.map(normalizeName);
+          if (players.length !== 8) throw new Error("This setup requires exactly 8 players: 2 groups × 4 positions.");
+          if (ids.length !== new Set(ids).size) throw new Error("Duplicate registered names found.");
+
+          log.textContent = "Creating men's singles draw data...";
+          await deleteCollection("mensPlayers");
+          await deleteCollection("mensGroups");
+          await deleteCollection("mensDrawnPlayers");
+
+          const batch = db.batch();
+          players.forEach((registeredName) => {
+            batch.set(db.collection("mensPlayers").doc(normalizeName(registeredName)), {
+              registeredName, group: null, drawn: false, slot: null, drawnAt: null
+            });
+          });
+          ["Group A", "Group B"].forEach((group) => {
+            batch.set(db.collection("mensGroups").doc(group), { usedSlots: [] });
+          });
+          await batch.commit();
+          log.textContent = "Done. Created 8 men's singles players and 8 random positions. Mixed doubles data was not changed.\n\nNow restore the secure Firestore rules and delete setup-mens.html.";
+        } catch (error) {
+          log.textContent = error.message;
+        }
+      });
+    </script>
+  </body>
+</html>
