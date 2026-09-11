@@ -3,32 +3,34 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Tennis Group Draw</title>
+    <title>Tennis Tournament Draw</title>
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
     <main class="app">
       <section class="draw-panel">
-        <p class="eyebrow">Tournament Draw - Mix Doubles</p>
-        <h1>2026 Seneca Season End Tennis Tournament</h1>
-        <p class="subtext">请大家输入注册姓名后点击"抽签“查看抽签结果。</p>
-
+        <p class="eyebrow">Tournament Draw</p>
+        <h1>Men's Singles Draw</h1>
+        <p class="subtext">Enter your registered name to draw your group and position.</p>
         <form id="drawForm" class="draw-form">
-          <label for="nameInput">注册名</label>
-          <input id="nameInput" name="registeredName" type="text" autocomplete="name" placeholder="请输入注册名，如果有疑问请查看群消息" required>
-          <button id="drawButton" type="submit">抽签</button>
+          <label for="nameInput">Registered Name</label>
+          <input id="nameInput" name="registeredName" type="text" autocomplete="name" placeholder="Enter your registered name" required>
+          <button id="drawButton" type="submit">Draw</button>
         </form>
-
         <div id="status" class="status" aria-live="polite"></div>
-        </div>
       </section>
 
       <section id="myResult" class="my-result" aria-live="polite"></section>
+
       <section class="drawn-panel">
-        <h2>抽签结果</h2>
-        <div id="drawnList" class="drawn-list"></div>
+        <h2>Men's Singles · Already Drawn</h2>
+        <div id="mensDrawnList" class="drawn-list"></div>
       </section>
-      <section id="results" class="results" aria-live="polite"></section>
+
+      <section class="drawn-panel history-panel">
+        <h2>Mixed Doubles · Results</h2>
+        <div id="mixedDrawnList" class="drawn-list"></div>
+      </section>
     </main>
 
     <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
