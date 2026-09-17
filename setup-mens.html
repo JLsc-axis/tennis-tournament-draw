@@ -3,66 +3,324 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Setup Men's Singles Draw</title>
+
+    <title>Setup Men's Doubles Draw</title>
+
     <style>
-      * { box-sizing: border-box; }
-      body { max-width: 720px; margin: 0 auto; padding: 24px 16px 48px; color: #172114; font-family: system-ui, sans-serif; }
-      label { display: block; margin: 18px 0 8px; font-weight: 700; }
-      textarea { width: 100%; min-height: 280px; border: 1px solid #dbe4d6; border-radius: 8px; padding: 12px; font: inherit; }
-      button { width: 100%; margin-top: 14px; border: 0; border-radius: 8px; padding: 13px 18px; background: #21764b; color: white; cursor: pointer; font: inherit; font-weight: 800; }
-      pre { overflow: auto; border-radius: 8px; padding: 12px; background: #f5f7f1; white-space: pre-wrap; }
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 24px 16px 48px;
+        color: #172114;
+        font-family: system-ui, sans-serif;
+      }
+
+      label {
+        display: block;
+        margin: 18px 0 8px;
+        font-weight: 700;
+      }
+
+      textarea,
+      input {
+        width: 100%;
+        border: 1px solid #dbe4d6;
+        border-radius: 8px;
+        padding: 12px;
+        font: inherit;
+      }
+
+      textarea {
+        min-height: 280px;
+      }
+
+      button {
+        width: 100%;
+        margin-top: 18px;
+        border: 0;
+        border-radius: 8px;
+        padding: 13px 18px;
+        background: #21764b;
+        color: white;
+        cursor: pointer;
+        font: inherit;
+        font-weight: 800;
+      }
+
+      pre {
+        overflow: auto;
+        border-radius: 8px;
+        padding: 12px;
+        background: #f5f7f1;
+        white-space: pre-wrap;
+      }
+
+      .hint {
+        color: #687263;
+        font-size: 14px;
+      }
     </style>
   </head>
+
   <body>
-    <h1>Setup Men's Singles Draw</h1>
-    <p>Paste one registered player name per line. Group and Position will both be random.</p>
-    <label for="playersInput">Men's Singles Players</label>
-    <textarea id="playersInput" placeholder="Andy&#10;Royce&#10;Oliver"></textarea>
-    <button id="setupButton" type="button">Create / Reset Men's Singles Draw</button>
+
+    <h1>Setup Men's Doubles Draw</h1>
+
+    <p>
+      Paste one representative name per team.
+      Each name represents one doubles pair.
+    </p>
+
+    <label for="playersInput">
+      Men's Doubles Teams
+    </label>
+
+    <textarea
+      id="playersInput"
+      placeholder="Andy&#10;Chris&#10;Eric&#10;Frank&#10;George&#10;Henry&#10;Ian&#10;Jack"
+    ></textarea>
+
+    <label for="separatedPlayer1">
+      Team to separate #1
+    </label>
+
+    <input
+      id="separatedPlayer1"
+      placeholder="Andy"
+    >
+
+    <label for="separatedPlayer2">
+      Team to separate #2
+    </label>
+
+    <input
+      id="separatedPlayer2"
+      placeholder="Chris"
+    >
+
+    <p class="hint">
+      These two teams will always be placed in different groups.
+    </p>
+
+    <button
+      id="setupButton"
+      type="button"
+    >
+      Create / Reset Men's Doubles Draw
+    </button>
+
     <pre id="log"></pre>
+
 
     <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
     <script src="firebase-config.js"></script>
+
+
     <script>
-      const db = firebase.initializeApp(firebaseConfig).firestore();
-      const log = document.querySelector("#log");
-      function normalizeName(name) { return name.trim().toLowerCase().replace(/\s+/g, "-"); }
-      function parsePlayers(text) { return text.split(/\r?\n/).map((name) => name.trim()).filter(Boolean); }
+      const db =
+        firebase.initializeApp(firebaseConfig).firestore();
+
+      const log =
+        document.querySelector("#log");
+
+
+      function normalizeName(name) {
+        return name
+          .trim()
+          .toLowerCase()
+          .replace(/\s+/g, "-");
+      }
+
+
+      function parsePlayers(text) {
+        return text
+          .split(/\r?\n/)
+          .map((name) => name.trim())
+          .filter(Boolean);
+      }
+
+
       async function deleteCollection(collectionName) {
-        const snapshot = await db.collection(collectionName).get();
-        const batch = db.batch();
-        snapshot.docs.forEach((document) => batch.delete(document.ref));
+        const snapshot =
+          await db.collection(collectionName).get();
+
+        const batch =
+          db.batch();
+
+        snapshot.docs.forEach((document) => {
+          batch.delete(document.ref);
+        });
+
         await batch.commit();
       }
 
-      document.querySelector("#setupButton").addEventListener("click", async () => {
-        try {
-          const players = parsePlayers(document.querySelector("#playersInput").value);
-          const ids = players.map(normalizeName);
-          if (players.length !== 8) throw new Error("This setup requires exactly 8 players: 2 groups × 4 positions.");
-          if (ids.length !== new Set(ids).size) throw new Error("Duplicate registered names found.");
 
-          log.textContent = "Creating men's singles draw data...";
-          await deleteCollection("mensPlayers");
-          await deleteCollection("mensGroups");
-          await deleteCollection("mensDrawnPlayers");
+      document
+        .querySelector("#setupButton")
+        .addEventListener("click", async () => {
 
-          const batch = db.batch();
-          players.forEach((registeredName) => {
-            batch.set(db.collection("mensPlayers").doc(normalizeName(registeredName)), {
-              registeredName, group: null, drawn: false, slot: null, drawnAt: null
-            });
-          });
-          ["Group A", "Group B"].forEach((group) => {
-            batch.set(db.collection("mensGroups").doc(group), { usedSlots: [] });
-          });
-          await batch.commit();
-          log.textContent = "Done. Created 8 men's singles players and 8 random positions. Mixed doubles data was not changed.\n\nNow restore the secure Firestore rules and delete setup-mens.html.";
-        } catch (error) {
-          log.textContent = error.message;
-        }
-      });
+          try {
+
+            const players =
+              parsePlayers(
+                document
+                  .querySelector("#playersInput")
+                  .value
+              );
+
+
+            const separatedPlayer1 =
+              document
+                .querySelector("#separatedPlayer1")
+                .value
+                .trim();
+
+
+            const separatedPlayer2 =
+              document
+                .querySelector("#separatedPlayer2")
+                .value
+                .trim();
+
+
+            const ids =
+              players.map(normalizeName);
+
+
+            if (players.length !== 8) {
+              throw new Error(
+                "This setup requires exactly 8 teams: 2 groups × 4 positions."
+              );
+            }
+
+
+            if (ids.length !== new Set(ids).size) {
+              throw new Error(
+                "Duplicate registered names found."
+              );
+            }
+
+
+            if (
+              !players.includes(separatedPlayer1) ||
+              !players.includes(separatedPlayer2)
+            ) {
+              throw new Error(
+                "Both separated names must exactly match names in the team list."
+              );
+            }
+
+
+            if (
+              separatedPlayer1 === separatedPlayer2
+            ) {
+              throw new Error(
+                "The two separated teams must be different."
+              );
+            }
+
+
+            log.textContent =
+              "Creating men's doubles draw data...";
+
+
+            /*
+              Reset current Men's Doubles data only.
+
+              Do NOT touch:
+              drawnPlayers
+              mensDrawnPlayers
+            */
+
+            await deleteCollection("players");
+            await deleteCollection("groups");
+            await deleteCollection(
+              "mensDoubleDrawnPlayers"
+            );
+
+
+            const batch =
+              db.batch();
+
+
+            players.forEach(
+              (registeredName) => {
+
+                const mustSeparate =
+                  registeredName ===
+                    separatedPlayer1 ||
+                  registeredName ===
+                    separatedPlayer2;
+
+
+                batch.set(
+                  db
+                    .collection("players")
+                    .doc(
+                      normalizeName(
+                        registeredName
+                      )
+                    ),
+                  {
+                    registeredName,
+                    group: null,
+                    drawn: false,
+                    slot: null,
+                    drawnAt: null,
+                    separationKey:
+                      mustSeparate
+                        ? "separation-1"
+                        : null
+                  }
+                );
+
+              }
+            );
+
+
+            ["Group A", "Group B"]
+              .forEach((group) => {
+
+                batch.set(
+                  db
+                    .collection("groups")
+                    .doc(group),
+                  {
+                    usedSlots: []
+                  }
+                );
+
+              });
+
+
+            await batch.commit();
+
+
+            log.textContent =
+              "Done.\n\n" +
+              "Created 8 men's doubles teams.\n" +
+              "Created Group A and Group B.\n" +
+              "The two selected teams will be kept in different groups.\n" +
+              "Previous men's singles and mixed doubles results were not changed.";
+
+          }
+
+          catch (error) {
+
+            console.error(error);
+
+            log.textContent =
+              error.message;
+
+          }
+
+        });
     </script>
+
   </body>
 </html>

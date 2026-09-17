@@ -1,41 +1,154 @@
 <!doctype html>
+
 <html lang="en">
+
   <head>
+
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Tennis Tournament Draw</title>
-    <link rel="stylesheet" href="styles.css">
+
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1"
+    >
+
+    <title>
+      Tennis Tournament Draw
+    </title>
+
+    <link
+      rel="stylesheet"
+      href="styles.css"
+    >
+
   </head>
+
+
   <body>
+
     <main class="app">
+
+
       <section class="draw-panel">
-        <p class="eyebrow">Tournament Draw - Men's singles </p>
-        <h1>2026 Seneca Season End Tennis Tournament</h1>
-        <p class="subtext">请输入注册名后点击“抽签”进行抽签</p>
-        <form id="drawForm" class="draw-form">
-          <label for="nameInput">注册名</label>
-          <input id="nameInput" name="registeredName" type="text" autocomplete="name" placeholder="请输入注册名" required>
-          <button id="drawButton" type="submit">抽签</button>
+
+        <p class="eyebrow">
+          Tournament Draw - Men's Doubles
+        </p>
+
+        <h1>
+          2026 Seneca Season End Tennis Tournament
+        </h1>
+
+        <p class="subtext">
+          请输入注册名后点击“抽签”进行抽签
+        </p>
+
+
+        <form
+          id="drawForm"
+          class="draw-form"
+        >
+
+          <label for="nameInput">
+            注册名
+          </label>
+
+          <input
+            id="nameInput"
+            name="registeredName"
+            type="text"
+            autocomplete="name"
+            placeholder="请输入注册名"
+            required
+          >
+
+          <button
+            id="drawButton"
+            type="submit"
+          >
+            抽签
+          </button>
+
         </form>
-        <div id="status" class="status" aria-live="polite"></div>
+
+
+        <div
+          id="status"
+          class="status"
+          aria-live="polite"
+        ></div>
+
       </section>
 
-      <section id="myResult" class="my-result" aria-live="polite"></section>
+
+
+      <section
+        id="myResult"
+        class="my-result"
+        aria-live="polite"
+      ></section>
+
+
 
       <section class="drawn-panel">
-        <h2>男单 · 抽签结果</h2>
-        <div id="mensDrawnList" class="drawn-list"></div>
+
+        <h2>
+          男双 · 抽签结果
+        </h2>
+
+        <div
+          id="mensDoubleDrawnList"
+          class="drawn-list"
+        ></div>
+
       </section>
 
-      <section class="drawn-panel history-panel">
-        <h2>混双 · 抽签结果</h2>
-        <div id="mixedDrawnList" class="drawn-list"></div>
+
+
+      <section
+        class="drawn-panel history-panel"
+      >
+
+        <h2>
+          男单 · 抽签结果
+        </h2>
+
+        <div
+          id="mensDrawnList"
+          class="drawn-list"
+        ></div>
+
       </section>
+
+
+
+      <section
+        class="drawn-panel history-panel"
+      >
+
+        <h2>
+          混双 · 抽签结果
+        </h2>
+
+        <div
+          id="mixedDrawnList"
+          class="drawn-list"
+        ></div>
+
+      </section>
+
+
     </main>
 
+
+
     <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+
     <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+
     <script src="firebase-config.js"></script>
+
     <script src="app.js"></script>
+
   </body>
+
 </html>
